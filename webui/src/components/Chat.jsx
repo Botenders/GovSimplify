@@ -78,7 +78,7 @@ const Chat = ({ agency }) => {
                 <div className="flex-1 p-4">
                     <div className="h-full bg-white rounded-lg border border-gray-200 p-4 overflow-y-auto">
                         <div className="text-center text-gray-500">
-                            Start your conversation with {agency}
+                            Ask a question about {agency} policies
                         </div>
                     </div>
                 </div>

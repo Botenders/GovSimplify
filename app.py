@@ -7,11 +7,11 @@ app = FastAPI()
 server = Server()
 
 requests_cache.install_cache(
-    cache_name="gov_simplify_cache",
+    cache_name="botenders_gov_simplify_cache",
     expire_after=3600,
     allowable_methods=["GET"],
 )
 
-@app.post("/message")
+@app.post("/message/{agency}")
 async def handle_message():
     return {"response": "Hello, World!"}

@@ -1,7 +1,7 @@
 from jinja2 import Template
 from typing import Tuple
 
-from src.agencies import fetch_agency, fetch_agency_documents
+from src.agencies import fetch_agency, fetch_doc_summaries
 
 
 TEMPLATE = """
@@ -11,57 +11,47 @@ You are a policy analyst specializing in regulatory and policy analysis. Your ro
 3. Compliance Requirements
 4. Potential Risks and Benefits
 
-When analyzing these documents, emphasize:
-1. Key Policy Developments:
-    - Purpose and background of the policy.
-    - Specific requirements or actions described.
-    - Timeline for implementation or comment deadlines.
+When analyzing these documents, **always ensure you have the full content** by invoking the `fetch_document_details` function using the provided document links if the content is insufficient.
 
-2. Impact Analysis:
-    - Potential effects on stakeholders (e.g., individuals, businesses, government agencies).
-    - Implications for compliance and enforcement.
-    - Risks and opportunities associated with the policy.
+When answering questions, your analysis should prioritize:
+1. **Key Policy Developments**:
+   - Purpose and background of the policy.
+   - Specific requirements or actions described.
+   - Timeline for implementation or comment deadlines.
+
+2. **Impact Analysis**:
+   - Potential effects on stakeholders (e.g., individuals, businesses, government agencies).
+   - Implications for compliance and enforcement.
+   - Risks and opportunities associated with the policy.
 
 Documents for Analysis:
 {% for doc in documents %}
 ---
 **Title**: {{ doc.attributes.title | default('No title available') }}
 **Document Type**: {{ doc.attributes.documentType | default('Unknown') }}
-**Docket ID**: {{ doc.attributes.docketId | default('No docket ID') }}
 **Published On**: {{ doc.attributes.postedDate | default('Unknown date') }}
 **Last Modified**: {{ doc.attributes.lastModifiedDate | default('Unknown date') }}
-**Agency**: {{ doc.attributes.agencyId | default('Unknown agency') }}
-**Comment Period**:
-  - Start Date: {{ doc.attributes.commentStartDate | default('N/A') }}
-  - End Date: {{ doc.attributes.commentEndDate | default('N/A') }}
-**Open for Comment**: {{ doc.attributes.openForComment | default('Unknown') }}
-**FR Document Number**: {{ doc.attributes.frDocNum | default('Not provided') }}
 **Withdrawn**: {{ doc.attributes.withdrawn | default('No') }}
-**Link to Document**: {{ doc.links.self | default('No link available') }}
-**Content**:
-{{ doc.content | default('Full content not available.') }}
-
-{% if doc.content is none or doc.content == 'Full content not available.' %}
-NOTE: This document does not include full content. To retrieve more information, invoke the `fetch_document_details` function with the following parameters:
-- `link`: {{ doc.links.self | default('No link available') }}
+**Link (required for `fetch_document_details` function call)**: {{ doc.links.self | default('No link available') }}
+{% if doc.summary %}
+**Content Summary**: {{ doc.summary }}
+{% else %}
+**Action Required**: Full content is missing. You must invoke `fetch_document_details` using the link provided above to retrieve detailed content for this document.
 {% endif %}
+---
 {% endfor %}
+
 ---
 
-Analysis Guidelines:
-- Focus on policy details provided in the documents.
-- Highlight critical timelines or deadlines for stakeholder input.
-- Explain the purpose and scope of each policy in accessible language.
-- Address specific stakeholder concerns where applicable.
-- Avoid speculation; base your analysis strictly on the provided content.
-- Use precise source attribution, referencing document titles, dates, and docket IDs.
-
-When answering questions, prioritize actionable insights and provide concise, clear responses grounded in the policy context.
+**Critical Note**:
+- The document links provided above must be used when invoking the `fetch_document_details` function. Failing to use these links will result in incomplete analysis.
+- For each document lacking full content, invoke the function immediately before continuing your analysis.
 """
 
 
 def generate_prompt(api_key: str, agency: str) -> str:
-    documents = fetch_agency(api_key, agency)
+    data = fetch_agency(api_key, agency)
+    documents = fetch_doc_summaries(api_key, data)
 
     template = Template(TEMPLATE)
     prompt = template.render(documents=documents)
