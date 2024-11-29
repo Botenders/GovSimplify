@@ -86,9 +86,8 @@ const Agencies = ({ setAgency, selectedAgency, onContinue }) => {
     };
 
     return (
-        <div className="w-full max-w-6xl mx-auto p-4">
-            <div className="mb-8">
-                <h2 className="text-2xl font-bold mb-4">Select Federal Agency</h2>
+        <div className="h-full flex flex-col overflow-hidden">
+            <div className="p-4 bg-white">
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                     <input
@@ -101,79 +100,81 @@ const Agencies = ({ setAgency, selectedAgency, onContinue }) => {
                 </div>
             </div>
 
-            <div className="sr-only" role="status" aria-live="polite">
-                {announceSelection}
-            </div>
+            <div className="flex-1 overflow-y-auto p-4 min-h-0">
+                <div className="sr-only" role="status" aria-live="polite">
+                    {announceSelection}
+                </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {filteredAgencies.map((agency) => (
-                    <button
-                        key={agency.id}
-                        onClick={() => handleSelection(agency.id)}
-                        onKeyDown={(e) => handleKeyPress(e, agency.id)}
-                        className={`
-                            w-full h-[240px]
-                            p-6 rounded-lg
-                            flex flex-col items-center
-                            transition-all duration-200
-                            focus-visible:outline-none
-                            focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2
-                            ${selected === agency.id
-                                ? 'border border-orange-500 bg-orange-50 shadow-lg focus-visible:ring-0'
-                                : 'border border-gray-200 hover:border-orange-200 hover:bg-orange-50/50'}
-                        `}
-                        aria-label={`Select ${agency.fullName}`}
-                        aria-selected={selected === agency.id}
-                        role="option"
-                    >
-                        <div className="flex-1 flex flex-col items-center justify-center">
-                            <div className="mb-4 rounded-full overflow-hidden bg-gray-100 p-2">
-                                <img
-                                    src={`/agencies/${agency.logo}`}
-                                    alt={`${agency.name} logo`}
-                                    className="w-16 h-16 object-fill"
-                                />
-                            </div>
-                            <span className="text-xl font-bold mb-2">{agency.name}</span>
-                            <div className="h-[60px] flex flex-col items-center justify-center">
-                                <div className="absolute opacity-0 pointer-events-none">
-                                    <span className="text-sm text-gray-600 text-center">{agency.fullName}</span>
-                                    <span className="text-xs text-gray-500 mt-2">{agency.category}</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {filteredAgencies.map((agency) => (
+                        <button
+                            key={agency.id}
+                            onClick={() => handleSelection(agency.id)}
+                            onKeyDown={(e) => handleKeyPress(e, agency.id)}
+                            className={`
+                                w-full h-[240px]
+                                p-6 rounded-lg
+                                flex flex-col items-center
+                                transition-all duration-200
+                                focus-visible:outline-none
+                                focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2
+                                ${selected === agency.id
+                                    ? 'border border-orange-500 bg-orange-50 shadow-lg focus-visible:ring-0'
+                                    : 'border border-gray-200 hover:border-orange-200 hover:bg-orange-50/50'}
+                            `}
+                            aria-label={`Select ${agency.fullName}`}
+                            aria-selected={selected === agency.id}
+                            role="option"
+                        >
+                            <div className="flex-1 flex flex-col items-center justify-center">
+                                <div className="mb-4 rounded-full overflow-hidden bg-gray-100 p-2">
+                                    <img
+                                        src={`/agencies/${agency.logo}`}
+                                        alt={`${agency.name} logo`}
+                                        className="w-16 h-16 object-fill"
+                                    />
                                 </div>
-                                {selected === agency.id ? (
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onContinue();
-                                        }}
-                                        className="
-                                            w-full bg-orange-600 text-white px-6 py-2 rounded-full
-                                            transition-all duration-200
-                                            hover:bg-orange-700
-                                            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2
-                                            shadow-md
-                                        "
-                                        aria-label={`Continue with ${agency.name}`}
-                                    >
-                                        Continue
-                                    </button>
-                                ) : (
-                                    <>
+                                <span className="text-xl font-bold mb-2">{agency.name}</span>
+                                <div className="h-[60px] flex flex-col items-center justify-center">
+                                    <div className="absolute opacity-0 pointer-events-none">
                                         <span className="text-sm text-gray-600 text-center">{agency.fullName}</span>
                                         <span className="text-xs text-gray-500 mt-2">{agency.category}</span>
-                                    </>
-                                )}
+                                    </div>
+                                    {selected === agency.id ? (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onContinue();
+                                            }}
+                                            className="
+                                                w-full bg-orange-600 text-white px-6 py-2 rounded-full
+                                                transition-all duration-200
+                                                hover:bg-orange-700
+                                                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2
+                                                shadow-md
+                                            "
+                                            aria-label={`Continue with ${agency.name}`}
+                                        >
+                                            Continue
+                                        </button>
+                                    ) : (
+                                        <>
+                                            <span className="text-sm text-gray-600 text-center">{agency.fullName}</span>
+                                            <span className="text-xs text-gray-500 mt-2">{agency.category}</span>
+                                        </>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    </button>
-                ))}
-            </div>
-
-            {filteredAgencies.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                    No agencies found matching your search.
+                        </button>
+                    ))}
                 </div>
-            )}
+
+                {filteredAgencies.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                        No agencies found matching your search.
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
