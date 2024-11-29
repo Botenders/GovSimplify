@@ -12,9 +12,7 @@ const Home = () => {
     };
 
     const handleLogoClick = () => {
-        if (showChat) {
-            setShowChat(false); // Only hide chat if it's currently showing
-        }
+        window.location.href = 'https://botenders.com';
     };
 
     return (

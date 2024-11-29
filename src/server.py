@@ -36,3 +36,42 @@ class Server:
     def _get_model(self, name: str) -> genai.Model:
         cache = self._get_model_cache(name)
         return genai.GenerativeModel.from_cached_content(cached_content=cache)
+
+    def handle_message(self, name: str, message: str) -> str:
+        model = self._get_model(name)
+        chat = model.start_chat()
+        res = chat.send_message(message)  # Send initial message
+
+        # Loop until no more function calls are required
+        while True:
+            new_response_parts = []
+
+            # Iterate over response parts for function calls or text
+            for part in res.parts:
+                if text := part.text:
+                    pass
+                    # print(text)  # Print text responses
+                elif fn := part.function_call:
+                    print(f"Executing {fn.name}")
+                    # Parse arguments and execute the function
+                    args = ...  # parse_args_to_dict(fn.args)
+                    fn_res = ...  # execute_function_call(fn.name, args, api_key)
+
+                    # Add the function response to response parts
+                    new_response_parts.append(
+                        genai.protos.Part(
+                            function_response=genai.protos.FunctionResponse(
+                                name=fn.name, response=fn_res
+                            )
+                        )
+                    )
+
+            # If no new function calls, break the loop
+            if not new_response_parts:
+                break
+
+            # Send the function responses to the model and get further output
+            res = chat.send_message(new_response_parts)
+
+        # Print the final text response after all function calls are processed
+        print(res.text)

@@ -4,18 +4,26 @@ import google.generativeai as genai
 FETCH_DOCUMENT_DETAILS = genai.protos.Tool(
     function_declarations=[
         genai.protos.FunctionDeclaration(
-            name="fetch_document_details",
-            description="Retrieve and analyze complete details of a document from Regulations.gov, including full metadata and text content, to support comprehensive policy analysis.",
+            name='fetch_document_details',
+            description=(
+                "Fetch the complete details of a regulatory document from Regulations.gov. "
+                "This includes metadata, such as title, publication date, and document type, "
+                "as well as the full text content for in-depth analysis. "
+                "Use this function when the document's provided details are insufficient for a thorough review."
+            ),
             parameters=genai.protos.Schema(
                 type=genai.protos.Type.OBJECT,
                 properties={
-                    "link": genai.protos.Schema(
+                    'link': genai.protos.Schema(
                         type=genai.protos.Type.STRING,
-                        description="The API endpoint link for the document. Use this to access detailed content and metadata.",
+                        description=(
+                            "The unique API endpoint URL for the document. "
+                            "This link is required to retrieve the full metadata and content of the document."
+                        )
                     )
                 },
-                required=["link"],
-            ),
+                required=['link']
+            )
         )
     ]
 )
