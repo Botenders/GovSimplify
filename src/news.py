@@ -13,7 +13,7 @@ def fetch_news_with_query(api_key, query, mode="latest"):
     Returns:
         dict: JSON response from the NewsData.io API.
     """
-    url = f'https://newsdata.io/api/1/{mode}?apikey={api_key}&q="{query}"'
+    url = f'https://newsdata.io/api/1/{mode}?apikey={api_key}&language=en&removeduplicate=1&q="{query}"'
     response = requests.get(url)
     response.raise_for_status()
     return response.json()

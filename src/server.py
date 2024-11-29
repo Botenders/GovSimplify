@@ -2,13 +2,14 @@ import datetime
 import google.generativeai as genai
 from google.generativeai import caching
 
+from src.news import fetch_news_with_query
 from src.tools import FETCH_DOCUMENT_DETAILS, FETCH_LATEST_NEWS
 
-
 class Server:
-    def __init__(self, gov_api_kei: str, genai_api_key: str) -> None:
-        self._gov_api_key = gov_api_kei
+    def __init__(self, gov_api_key: str, genai_api_key: str, news_api_key: str) -> None:
+        self._gov_api_key = gov_api_key
         self._genai_api_key = genai_api_key
+        self._news_api_key = news_api_key
 
     def _create_model_cache(
         self, name: str, model_name: str, system_instruction: str
@@ -29,13 +30,16 @@ class Server:
 
     def _create_model(
         self, name: str, model_name: str, system_instruction: str
-    ) -> genai.Model:
+    ) -> genai.GenerativeModel:
         cache = self._create_model_cache(name, model_name, system_instruction)
         return genai.GenerativeModel.from_cached_content(cached_content=cache)
 
-    def _get_model(self, name: str) -> genai.Model:
+    def _get_model(self, name: str) -> genai.GenerativeModel:
         cache = self._get_model_cache(name)
         return genai.GenerativeModel.from_cached_content(cached_content=cache)
+
+    def fetch_news(self, query: str) -> dict:
+        return fetch_news_with_query(self._news_api_key, query)
 
     def handle_message(self, name: str, message: str) -> str:
         model = self._get_model(name)
