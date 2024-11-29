@@ -1,7 +1,7 @@
 from jinja2 import Template
 from typing import Tuple
 
-from src.gov_api import fetch_agency, fetch_agency_documents
+from src.agencies import fetch_agency, fetch_agency_documents
 
 
 TEMPLATE = """
@@ -61,8 +61,7 @@ When answering questions, prioritize actionable insights and provide concise, cl
 
 
 def generate_prompt(api_key: str, agency: str) -> str:
-    docs = fetch_agency(api_key, agency)
-    documents = fetch_agency_documents(api_key, docs)
+    documents = fetch_agency(api_key, agency)
 
     template = Template(TEMPLATE)
     prompt = template.render(documents=documents)

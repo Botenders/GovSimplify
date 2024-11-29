@@ -20,7 +20,7 @@ def fetch_agency(api_key, agency, filters="Notice,Rule,Proposed Rule"):
     """
 
     # Fetch metadata to determine total pages
-    metadata_url = f"{GOV_URL}?filter[agencyId]={agency}&filter[documentType]={filters}&api_key={api_key}&page[number]=1"
+    metadata_url = f"{GOV_URL}?filter[agencyId]={agency}&filter[documentType]={filters}&api_key={api_key}&page[size]=250&page[number]=1"
     metadata_res = requests.get(metadata_url)
     metadata_res.raise_for_status()
     metadata = metadata_res.json().get("meta", {})
@@ -32,7 +32,7 @@ def fetch_agency(api_key, agency, filters="Notice,Rule,Proposed Rule"):
     # Fetch documents across all pages
     results = []
     for page in range(1, total_pages + 1):
-        url = f"{GOV_URL}?filter[agencyId]={agency}&filter[documentType]={filters}&api_key={api_key}&page[number]={page}"
+        url = f"{GOV_URL}?filter[agencyId]={agency}&filter[documentType]={filters}&api_key={api_key}&page[size]=250&page[number]={page}"
         res = requests.get(url)
         res.raise_for_status()
         data = res.json().get("data", [])
@@ -159,49 +159,6 @@ def fetch_document(api_key, link):
         raise RuntimeError(f"Failed to fetch document metadata: {e}")
 
 
-def fetch_agency_documents(api_key, docs, doc_type="Rule"):
-    """
-    Processes documents from a list sequentially, fetching and parsing HTML content where applicable.
-    Args:
-        api_key (str): API key for Regulations.gov API.
-        docs (list): List of documents returned by fetch_agency.
-        doc_type (str or iterable): Document type(s) to filter (e.g., "Rule", "Notice", or "All").
-    Returns:
-        list: Processed documents with parsed content.
-    """
-
-    def process_doc(doc):
-        attr = doc.get("attributes")
-        link = doc.get("links", {}).get("self")
-        if attr and link:
-            # Handle single string or multiple document types
-            document_type = attr.get("documentType")
-            if doc_type == "All" or document_type in doc_type:
-                try:
-                    # Fetch the document URL
-                    url = fetch_document(api_key, link)
-                    # Parse the HTML content
-                    content = download_and_parse_htm(url)
-                    doc["content"] = content
-                except Exception as e:
-                    doc["error"] = str(e)  # Log the error in the document
-        return doc
-
-    # Ensure doc_type is an iterable (except for "All")
-    if doc_type != "All" and not isinstance(doc_type, Iterable):
-        doc_type = [doc_type]  # Convert single string to a list
-
-    # Sequentially process each document
-    processed_docs = []
-    for doc in docs:
-        try:
-            processed_docs.append(process_doc(doc))
-        except Exception as e:
-            print(f"Error processing document: {e}")
-
-    return processed_docs
-
-
 def fetch_metadata(api_key, link):
     """
     Fetches metadata for a document from the Regulations.gov API.
@@ -271,6 +228,12 @@ def fetch_document_details(api_key, link):
     try:
         # Step 1: Fetch document metadata
         metadata = fetch_metadata(api_key, link)
+        metadata = metadata.get("data")
+        if not metadata:
+            raise RuntimeError("Response does not contain 'data' key.")
+        metadata = metadata.get("attributes")
+        if not metadata:
+            raise RuntimeError("Metadata does not contain 'attributes' key.")
 
         # Step 2: Extract the HTML file URL
         html_file_url = get_html_file_url(metadata)

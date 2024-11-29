@@ -2,6 +2,8 @@ import datetime
 import google.generativeai as genai
 from google.generativeai import caching
 
+from src.tools import FETCH_DOCUMENT_DETAILS, FETCH_LATEST_NEWS
+
 
 class Server:
     def __init__(self, gov_api_kei: str, genai_api_key: str) -> None:
@@ -15,7 +17,10 @@ class Server:
             model=f"models/{model_name}-002",
             display_name=name,
             system_instruction=system_instruction,
-            # tools=[fetch_document_details_tool],
+            tools=[
+                FETCH_DOCUMENT_DETAILS,
+                FETCH_LATEST_NEWS,
+            ],
             ttl=datetime.timedelta(minutes=30),
         )
 

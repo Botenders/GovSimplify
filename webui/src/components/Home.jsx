@@ -49,7 +49,7 @@ const Home = () => {
                 <div className="text-sm text-gray-500">
                     &copy; 2024 Botenders, Inc.
                     <a
-                        href="https://github.com/tailwindlabs/headlessui"
+                        href="https://github.com/Botenders/GovSimplify"
                         target="_blank"
                         rel="noreferrer"
                         className="ml-2 text-orange-500"
