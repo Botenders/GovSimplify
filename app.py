@@ -1,3 +1,4 @@
+import requests_cache
 from fastapi import FastAPI
 
 from src import Server
@@ -5,6 +6,12 @@ from src import Server
 app = FastAPI()
 server = Server()
 
-@app.get("/chat")
-async def handle_chat():
-    return {"message": "Hello, World!"}
+requests_cache.install_cache(
+    cache_name="gov_simplify_cache",
+    expire_after=3600,
+    allowable_methods=["GET"],
+)
+
+@app.post("/message")
+async def handle_message():
+    return {"response": "Hello, World!"}

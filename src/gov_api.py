@@ -1,14 +1,7 @@
 import re
 import requests
-import requests_cache
 from bs4 import BeautifulSoup
 from collections.abc import Iterable
-
-requests_cache.install_cache(
-    cache_name="regulations_cache",
-    expire_after=3600,
-    allowable_methods=["GET"],
-)
 
 GOV_URL = "https://api.regulations.gov/v4/documents"
 
