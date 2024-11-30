@@ -1,16 +1,17 @@
 import React, { useState, useRef, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { v4 as uuid4 } from "uuid";
 import ReactMarkdown from "react-markdown";
 import NewsCard from "./News";
 import AttachmentPreview from "./Attachment";
 
-const fetchResponse = async (message, agency) => {
+const fetchResponse = async (message, agency, sessionId) => {
     const response = await fetch(
         `/message/${agency}`,
         {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message })
+            body: JSON.stringify({ message, sessionId })
         }
     );
     const data = await response.json();
@@ -38,6 +39,7 @@ const Chat = ({ agency, agencyName }) => {
     const [news, setNews] = useState([]);
     const [showDelayMessage, setShowDelayMessage] = useState(false);
     const [isLoadingNews, setIsLoadingNews] = useState(true);
+    const [sessionId, setSessionId] = useState(uuid4());
     const messagesEndRef = useRef(null);
     const loadingTimerRef = useRef(null);
 
@@ -96,7 +98,7 @@ const Chat = ({ agency, agencyName }) => {
         }, 10000);
 
         try {
-            const response = await fetchResponse(inputMessage, agency);
+            const response = await fetchResponse(inputMessage, agency, sessionId);
             setMessages(prev => [...prev, { ...response, isUser: false }]);
         } catch (error) {
             console.error("Error fetching response:", error);
@@ -258,7 +260,7 @@ const Chat = ({ agency, agencyName }) => {
                                                 </div>
 
                                                 {/* Attachment container */}
-                                                <div className="mt-2 max-w-[80%] overflow-hidden">
+                                                <div className="mt-2 max-w-[80%] overflow-hidden flex flex-col gap-y-2">
                                                     {message.attachments?.map((attachment, attachmentIndex) => (
                                                         attachment.content && (
                                                             <AttachmentPreview

@@ -75,10 +75,12 @@ class Server:
                 return True
         return False
 
-    def _get_model_cache(self, cache_name: str) -> caching.CachedContent:
+    def _get_model_cache(self, cache_name: str, reset_ttl: bool) -> caching.CachedContent:
         for c in caching.CachedContent.list():
             if c.display_name == cache_name:
                 print(f"Found cache for {cache_name}")
+                if reset_ttl:
+                    c.update(ttl=datetime.timedelta(minutes=30))
                 return c
         raise ValueError(f"Model cache for {cache_name} not found.")
 
@@ -117,14 +119,14 @@ class Server:
                         f"Failed to create cache after {max_retries} attempts: {e}"
                     )
 
-    def _get_model(self, agency: str) -> genai.GenerativeModel:
+    def _get_model(self, agency: str, reset_ttl=True) -> genai.GenerativeModel:
         name = f"{agency}_model"
         if not self._check_cache_exists(name):
             system_instruction = generate_prompt(self._gov_api_key, agency)
             model = self._create_model(name, "gemini-1.5-pro", system_instruction)
         else:
             model = genai.GenerativeModel.from_cached_content(
-                cached_content=self._get_model_cache(name)
+                cached_content=self._get_model_cache(name, reset_ttl)
             )
         return model
 
