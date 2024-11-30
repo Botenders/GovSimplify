@@ -1,7 +1,10 @@
 import re
 import requests
+import requests_cache
 from collections.abc import Iterable
 from bs4 import BeautifulSoup
+from concurrent.futures import ThreadPoolExecutor
+from requests_cache.backends.sqlite import SQLiteCache
 
 GOV_GSA_URL = "https://api.regulations.gov/v4/documents"
 
@@ -183,13 +186,14 @@ def fetch_document(api_key, link):
         raise RuntimeError(f"Failed to fetch document metadata: {e}")
 
 
-def fetch_metadata(api_key, link):
+def fetch_metadata(api_key, link, session=None):
     """
     Fetches metadata for a document from the Regulations.gov API.
 
     Args:
         api_key (str): API key for accessing the API.
         link (str): API endpoint link for the document.
+        session (requests.Session, optional): Session object to use for requests.
 
     Returns:
         dict: Metadata for the document.
@@ -198,7 +202,8 @@ def fetch_metadata(api_key, link):
         ValueError: If the response is missing expected fields.
         requests.RequestException: If the API request fails.
     """
-    response = requests.get(f"{link}?api_key={api_key}")
+    session = session or requests.Session()
+    response = session.get(f"{link}?api_key={api_key}")
     response.raise_for_status()
     data = response.json()
 
@@ -211,15 +216,7 @@ def fetch_metadata(api_key, link):
 def get_html_file_url(metadata):
     """
     Extracts the URL of the HTML file from document metadata.
-
-    Args:
-        metadata (dict): Metadata for the document.
-
-    Returns:
-        str: URL of the HTML file.
-
-    Raises:
-        ValueError: If no HTML file URL is found.
+    (This function doesn't need modification as it doesn't make HTTP requests)
     """
     file_formats = metadata.get("fileFormats", [])
     html_file = next(
@@ -231,8 +228,77 @@ def get_html_file_url(metadata):
         None,
     )
     if not html_file:
-        raise ValueError("No HTML file found in the document formats.")
+        return None
     return html_file
+
+
+def get_pdf_file_url(metadata):
+    """
+    Extracts the URL of the PDF file from document metadata.
+    (This function doesn't need modification as it doesn't make HTTP requests)
+    """
+    file_formats = metadata.get("fileFormats", [])
+    pdf_file = next(
+        (file.get("fileUrl") for file in file_formats if file.get("format") == "pdf"),
+        None,
+    )
+    if not pdf_file:
+        return None
+    return pdf_file
+
+
+def fetch_doc_summaries(api_key, docs, doc_type="Rule", batch_size=16):
+    """
+    Fetches document summaries in parallel using a thread-safe cached session.
+    """
+    # Create a thread-safe cache
+    backend = SQLiteCache("http_cache", check_same_thread=False)
+    session = requests_cache.CachedSession(
+        cache_name="http_cache", backend=backend, expire_after=3600 * 24
+    )
+
+    def process_doc(doc):
+        attr = doc.get("attributes")
+        link = doc.get("links", {}).get("self")
+        if attr and link:
+            document_type = attr.get("documentType")
+            if doc_type == "All" or document_type in doc_type:
+                try:
+                    metadata = fetch_metadata(api_key, link, session=session)
+                    html_url = get_html_file_url(metadata)
+
+                    if not html_url:
+                        pdf_url = get_pdf_file_url(metadata)
+                        if not pdf_url:
+                            raise ValueError(
+                                "No HTML or PDF file URL found in the document metadata."
+                            )
+
+                    summary = download_and_parse_htm(
+                        html_url, session=session, return_summary_only=True
+                    )
+                    doc["summary"] = summary
+                except Exception as e:
+                    doc["error"] = str(e)
+        return doc
+
+    # Ensure doc_type is an iterable (except for "All")
+    if doc_type != "All" and not isinstance(doc_type, Iterable):
+        doc_type = [doc_type]
+
+    # Process documents in parallel using ThreadPoolExecutor
+    processed_docs = []
+    n = len(docs)
+    with ThreadPoolExecutor() as executor:
+        for i in range(0, n, batch_size):
+            batch = docs[i : i + batch_size]
+            processed_batch = list(executor.map(process_doc, batch))
+            processed_docs.extend(processed_batch)
+            print(
+                f"Processed {min(i+batch_size, n)}/{n} documents", end="\r", flush=True
+            )
+
+    return processed_docs
 
 
 def fetch_document_details(api_key, link):
@@ -262,6 +328,20 @@ def fetch_document_details(api_key, link):
         # Step 2: Extract the HTML file URL
         html_file_url = get_html_file_url(metadata)
 
+        if not html_file_url:
+            pdf_url = get_pdf_file_url(metadata)
+            if not pdf_url:
+                raise ValueError(
+                    "No HTML or PDF file URL found in the document metadata."
+                )
+
+            return {
+                "title": metadata.get("title", "No title available"),
+                "documentType": metadata.get("documentType", "Unknown type"),
+                "docketId": metadata.get("docketId", "No docket ID"),
+                "pdf_url": pdf_url,
+            }
+
         # Step 3: Download and parse the HTML content
         content = download_and_parse_htm(html_file_url, return_raw_htm=True)
 
@@ -280,48 +360,3 @@ def fetch_document_details(api_key, link):
         raise RuntimeError(f"Data error: {e}")
     except Exception as e:
         raise RuntimeError(f"An unexpected error occurred: {e}")
-
-
-def fetch_doc_summaries(api_key, docs, doc_type="Rule"):
-    """
-    Processes documents from a list sequentially, fetching and parsing HTML content where applicable.
-    Args:
-        api_key (str): API key for Regulations.gov API.
-        docs (list): List of documents returned by fetch_agency.
-        doc_type (str or iterable): Document type(s) to filter (e.g., "Rule", "Notice", or "All").
-    Returns:
-        list: Processed documents with parsed content.
-    """
-
-    def process_doc(doc):
-        attr = doc.get("attributes")
-        link = doc.get("links", {}).get("self")
-        if attr and link:
-            # Handle single string or multiple document types
-            document_type = attr.get("documentType")
-            if doc_type == "All" or document_type in doc_type:
-                try:
-                    # Fetch the document URL
-                    url = fetch_document(api_key, link)
-                    # Parse the HTML content
-                    summary = download_and_parse_htm(url, return_summary_only=True)
-                    doc["summary"] = summary
-                except Exception as e:
-                    doc["error"] = str(e)  # Log the error in the document
-        return doc
-
-    # Ensure doc_type is an iterable (except for "All")
-    if doc_type != "All" and not isinstance(doc_type, Iterable):
-        doc_type = [doc_type]  # Convert single string to a list
-
-    # Sequentially process each document
-    processed_docs = []
-    n = len(docs)
-    for i, doc in enumerate(docs):
-        print(f"Processing {i+1}/{n} documents", end="\r", flush=True)
-        try:
-            processed_docs.append(process_doc(doc))
-        except Exception as e:
-            print(f"Error processing document: {e}")
-
-    return processed_docs

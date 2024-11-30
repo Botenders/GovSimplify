@@ -17,19 +17,21 @@ server = Server(
 
 requests_cache.install_cache(
     cache_name="botenders_gov_simplify_cache",
-    expire_after=3600,
+    expire_after=3600 * 24, # Policies rarely change on a daily basis, so cache for 24 hours
     allowable_methods=["GET"],
 )
+
 
 @app.get("/news/{query}")
 async def fetch_news(query: str):
     return server.fetch_news(query)
 
+
 @app.post("/message/{agency}")
 async def handle_message(request: Request, agency: str):
     payload = await request.json()
-    response = server.handle_message(agency, payload['message'])
-    response['timestamp'] = datetime.now().isoformat()
+    response = server.handle_message(payload["sessionId"], agency, payload["message"])
+    response["timestamp"] = datetime.now().isoformat()
     return response
 
 

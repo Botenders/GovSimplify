@@ -32,12 +32,17 @@ const Home = () => {
                         className="h-8 transform transition-transform duration-200 cursor-pointer hover:scale-105"
                         onClick={handleLogoClick}
                     />
-                    <span
-                        className="ml-2 text-lg font-bold text-white transform transition-transform duration-200 cursor-pointer hover:scale-105"
-                        onClick={handleTitleClick}
-                    >
-                        GovSimplify
-                    </span>
+                    <div className="ml-2 flex flex-col items-start">
+                        <span
+                            className="text-lg font-bold text-white transform transition-transform duration-200 cursor-pointer hover:scale-105"
+                            onClick={handleTitleClick}
+                        >
+                            GovSimplify
+                        </span>
+                        <span className="text-[10px] text-gray-300 leading-tight">
+                            By Botenders, powered by Google Gemini
+                        </span>
+                    </div>
                 </div>
             </header>
 
@@ -54,17 +59,33 @@ const Home = () => {
                 )}
             </main>
 
-            <footer className="h-14 bg-gray-200 border-t border-gray-300 flex items-center justify-center">
+            <footer className="h-14 bg-gray-200 border-t border-gray-300 flex items-center justify-between px-4">
+                {/* Left: Copyright Message */}
                 <div className="text-sm text-gray-500">
-                    &copy; 2024 Botenders, Inc.
-                    <a
-                        href="https://github.com/Botenders/GovSimplify"
+                    &copy; 2024 Botenders, Inc. <a 
+                        href="https://www.apache.org/licenses/LICENSE-2.0"
                         target="_blank"
-                        rel="noreferrer"
-                        className="ml-2 text-orange-500"
+                        rel="noopener noreferrer"
+                        className="text-orange-500 hover:underline"
                     >
-                        Source Code
+                        Apache License 2.0
                     </a>
+                </div>
+
+                {/* Right: Social Media Links */}
+                <div className="flex items-center gap-4">
+                    <img
+                        src="/github-mark.svg"
+                        alt="GitHub"
+                        onClick={() => window.open('https://github.com/Botenders/GovSimplify', '_blank')}
+                        className="h-6 cursor-pointer"
+                    />
+                    <img
+                        src="/linkedin.svg"
+                        alt="LinkedIn"
+                        onClick={() => window.open('https://linkedin.com/company/botenders', '_blank')}
+                        className="h-6 cursor-pointer"
+                    />
                 </div>
             </footer>
         </div>
