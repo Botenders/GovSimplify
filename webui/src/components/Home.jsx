@@ -5,6 +5,7 @@ import Chat from './Chat';
 
 const Home = () => {
     const [selectedAgency, setSelectedAgency] = useState(null);
+    const [agencyName, setAgencyName] = useState('');
     const [showChat, setShowChat] = useState(false);
 
     const handleContinue = () => {
@@ -13,6 +14,12 @@ const Home = () => {
 
     const handleLogoClick = () => {
         window.location.href = 'https://botenders.com';
+    };
+
+    const handleTitleClick = () => {
+        if (showChat) {
+            setShowChat(false); // Only hide chat if it's currently showing
+        }
     };
 
     return (
@@ -25,7 +32,10 @@ const Home = () => {
                         className="h-8 transform transition-transform duration-200 cursor-pointer hover:scale-105"
                         onClick={handleLogoClick}
                     />
-                    <span className="ml-2 text-lg font-bold text-white">
+                    <span
+                        className="ml-2 text-lg font-bold text-white transform transition-transform duration-200 cursor-pointer hover:scale-105"
+                        onClick={handleTitleClick}
+                    >
                         GovSimplify
                     </span>
                 </div>
@@ -36,10 +46,11 @@ const Home = () => {
                     <Agencies
                         setAgency={setSelectedAgency}
                         selectedAgency={selectedAgency}
+                        setAgencyName={setAgencyName}
                         onContinue={handleContinue}
                     />
                 ) : (
-                    <Chat agency={selectedAgency} />
+                    <Chat agency={selectedAgency} agencyName={agencyName} />
                 )}
             </main>
 

@@ -1,3 +1,4 @@
+from datetime import datetime
 from jinja2 import Template
 from typing import Tuple
 
@@ -55,6 +56,9 @@ def generate_prompt(api_key: str, agency: str) -> str:
 
     template = Template(TEMPLATE)
     prompt = template.render(documents=documents)
+
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    prompt = f"{prompt}\n\n---\n\n**Current Date:** {current_date}."
 
     return prompt
 

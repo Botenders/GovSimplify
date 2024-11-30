@@ -1,17 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Search } from 'lucide-react';
 
-const Agencies = ({ setAgency, selectedAgency, onContinue }) => {
+const Agencies = ({ setAgency, setAgencyName, selectedAgency, onContinue }) => {
     const [selected, setSelected] = useState(selectedAgency);
     const [searchQuery, setSearchQuery] = useState('');
     const [announceSelection, setAnnounceSelection] = useState('');
 
-    useEffect(() => {
-        setAgency(selected);
-        setSelected(selectedAgency);
-    }, [selected, selectedAgency, setAgency]);
-
-    const agencies = [
+    const agencies = useMemo(() => [
         { id: "EPA", name: "EPA", fullName: "Environmental Protection Agency", logo: "EPA.svg", category: "Environment" },
         { id: "SEC", name: "SEC", fullName: "Securities and Exchange Commission", logo: "SEC.svg", category: "Finance" },
         { id: "FAA", name: "FAA", fullName: "Federal Aviation Administration", logo: "FAA.svg", category: "Transportation" },
@@ -64,7 +59,16 @@ const Agencies = ({ setAgency, selectedAgency, onContinue }) => {
         { id: "DHS", name: "DHS", fullName: "Department of Homeland Security", logo: "DHS.svg", category: "Defense" },
         { id: "OFAC", name: "OFAC", fullName: "Office of Foreign Assets Control", logo: "OFAC.svg", category: "Finance" },
         { id: "FTC", name: "FTC", fullName: "Federal Trade Commission", logo: "FTC.svg", category: "Trade" }
-    ];
+    ], []);
+
+    useEffect(() => {
+        if (selected) {
+            const selectedAgencyData = agencies.find(a => a.id === selected);
+            setAgency(selected);
+            setAgencyName(selectedAgencyData.fullName);
+        }
+        setSelected(selectedAgency);
+    }, [agencies, selected, selectedAgency, setAgency, setAgencyName]);
 
     const filteredAgencies = agencies.filter(agency =>
         agency.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -129,7 +133,7 @@ const Agencies = ({ setAgency, selectedAgency, onContinue }) => {
                             <div className="flex-1 flex flex-col items-center justify-center">
                                 <div className="mb-4 rounded-full overflow-hidden bg-gray-100 p-2">
                                     <img
-                                        src={`/agencies/${agency.logo}`}
+                                        src={`agencies/${agency.logo}`}
                                         alt={`${agency.name} logo`}
                                         className="w-16 h-16 object-fill"
                                     />
