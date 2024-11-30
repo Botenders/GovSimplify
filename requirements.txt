@@ -1,1 +1,6 @@
-fastapi
+redis[hiredis]
+fastapi[standard]
+uvicorn[standard]
+requests-cache
+jinja2
+google-generativeai

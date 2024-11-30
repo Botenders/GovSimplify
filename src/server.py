@@ -1,25 +1,66 @@
-import datetime
 import time
+import redis
+import pickle
+import datetime
 import google.generativeai as genai
 from google.generativeai import caching
 
 from src.prompt import generate_prompt
 from src.news import fetch_news_with_query
-from src.tools import FETCH_DOCUMENT_DETAILS, FETCH_LATEST_NEWS, execute_function_call, parse_args_to_dict
+from src.tools import (
+    FETCH_DOCUMENT_DETAILS,
+    FETCH_LATEST_NEWS,
+    execute_function_call,
+    parse_args_to_dict,
+)
+
 
 class Server:
-    def __init__(self, gov_api_key: str, genai_api_key: str, news_api_key: str) -> None:
+    def __init__(
+        self,
+        gov_api_key: str,
+        genai_api_key: str,
+        news_api_key: str,
+        redis_host: str="localhost",
+        redis_port: int=6379,
+        redis_db: int=0,
+    ) -> None:
+        self.redis_client = redis.StrictRedis(
+            host=redis_host, port=redis_port, db=redis_db
+        )
         self._gov_api_key = gov_api_key
         self._genai_api_key = genai_api_key
         self._news_api_key = news_api_key
         genai.configure(api_key=self._genai_api_key)
 
+    def _load_history(self, session_id: str) -> list:
+        """
+        Fetch chat history from Redis. If the session ID doesn't exist or has expired, return an empty list.
+        """
+        serialized_history = self.redis_client.get(session_id)
+        if serialized_history:
+            return pickle.loads(serialized_history)  # Deserialize the history
+        return []
+
+    def _save_history(self, session_id: str, history: list, ttl: int=600) -> None:
+        """
+        Save chat history to Redis with a TTL (time-to-live) that resets on each update.
+
+        Args:
+            session_id (str): The unique session ID.
+            history (list): The chat history to save.
+            ttl (int): Time-to-live in seconds (default: 600 seconds or 10 minutes).
+        """
+        serialized_history = pickle.dumps(history)
+        # Use SETEX to store the value with a timeout
+        self.redis_client.setex(session_id, ttl, serialized_history)
+
     def _create_model_cache(
-        self, name: str, model_name: str, system_instruction: str
+        self, cache_name: str, model_name: str, system_instruction: str
     ) -> caching.CachedContent:
         return caching.CachedContent.create(
             model=f"models/{model_name}-002",
-            display_name=name,
+            display_name=cache_name,
             system_instruction=system_instruction,
             tools=[
                 FETCH_DOCUMENT_DETAILS,
@@ -28,32 +69,33 @@ class Server:
             ttl=datetime.timedelta(minutes=30),
         )
 
-    def _check_cache_exists(self, name: str) -> bool:
+    def _check_cache_exists(self, cache_name: str) -> bool:
         for c in caching.CachedContent.list():
-            if c.display_name == name:
+            if c.display_name == cache_name:
                 return True
         return False
 
-    def _get_model_cache(self, name: str) -> caching.CachedContent:
+    def _get_model_cache(self, cache_name: str) -> caching.CachedContent:
         for c in caching.CachedContent.list():
-            if c.display_name == name:
+            if c.display_name == cache_name:
+                print(f"Found cache for {cache_name}")
                 return c
-        raise ValueError(f"Model cache for {name} not found.")
+        raise ValueError(f"Model cache for {cache_name} not found.")
 
     def _create_model(
         self, name: str, model_name: str, system_instruction: str
     ) -> genai.GenerativeModel:
         """
         Creates a GenerativeModel instance with a retry mechanism for cache creation.
-        
+
         Args:
             name (str): The name of the model.
             model_name (str): The underlying model's name.
             system_instruction (str): System instructions for the model.
-        
+
         Returns:
             genai.GenerativeModel: The initialized GenerativeModel instance.
-        
+
         Raises:
             Exception: If cache creation fails after 3 attempts.
         """
@@ -86,24 +128,27 @@ class Server:
             )
         return model
 
-    def handle_message(self, name: str, message: str) -> dict:
-        model = self._get_model(name)
-        chat = model.start_chat()
-        res = chat.send_message(message)  # Send initial message
+    def handle_message(self, session_id: str, agency: str, message: str) -> dict:
+        model = self._get_model(agency)
+
+        # Load history from Redis
+        cached_history = self._load_history(session_id)
+        chat = model.start_chat(
+            history=cached_history, 
+            enable_automatic_function_calling=True,
+        )
+
+        # Send the user's message
+        res = chat.send_message(message)
         attachments = []
 
-        # Loop until no more function calls are required
+        # Process model responses
         while True:
             new_response_parts = []
 
-            # Iterate over response parts for function calls or text
             for part in res.parts:
-                if _ := part.text:
-                    pass
-                    # print(text)  # Print text responses
-                elif fn := part.function_call:
+                if fn := part.function_call:
                     print(f"Executing {fn.name}")
-                    # Parse arguments and execute the function
                     args = parse_args_to_dict(fn.args)
                     fn_res = execute_function_call(fn.name, args, self._gov_api_key)
 
@@ -123,9 +168,13 @@ class Server:
             if not new_response_parts:
                 break
 
-            # Send the function responses to the model and get further output
+            # Send function responses to the model
             res = chat.send_message(new_response_parts)
 
+        # Save updated history to Redis
+        self._save_history(session_id, chat.history)
+
+        # Return the final response
         return {
             "text": res.text,
             "attachments": attachments,

@@ -21,15 +21,17 @@ requests_cache.install_cache(
     allowable_methods=["GET"],
 )
 
+
 @app.get("/news/{query}")
 async def fetch_news(query: str):
     return server.fetch_news(query)
 
+
 @app.post("/message/{agency}")
 async def handle_message(request: Request, agency: str):
     payload = await request.json()
-    response = server.handle_message(agency, payload['message'])
-    response['timestamp'] = datetime.now().isoformat()
+    response = server.handle_message(payload["sessionId"], agency, payload["message"])
+    response["timestamp"] = datetime.now().isoformat()
     return response
 
 

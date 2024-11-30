@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import NewsCard from "./News";
 import AttachmentPreview from "./Attachment";
 
@@ -185,8 +186,8 @@ const Chat = ({ agency, agencyName }) => {
                     <div className="flex flex-col h-full bg-white rounded-lg border border-gray-200">
                         <div className="flex-1 p-4 overflow-y-auto">
                             {messages.length === 0 ? (
-                                <div className="text-center text-gray-500">
-                                    Ask a question about {agency} policies
+                                <div className="text-center text-gray-500 text-sm italic">
+                                    This tool is intended to assist users in understanding policies from {agency} and does not constitute legal advice.
                                 </div>
                             ) : (
                                 <div className="space-y-4">
@@ -199,9 +200,9 @@ const Chat = ({ agency, agencyName }) => {
                                                 <span className="text-xs text-gray-500 mt-1 px-1">
                                                     {new Date(message.timestamp).toLocaleTimeString()}
                                                 </span>
-                                                {/* Message bubble */}
+                                                {/* Message bubble with Markdown support */}
                                                 <div
-                                                    className={`inline-block p-4 rounded-lg 
+                                                    className={`inline-block p-4 rounded-lg w-full
                                                         ${message.isUser
                                                             ? 'bg-orange-50'
                                                             : message.isError
@@ -209,9 +210,51 @@ const Chat = ({ agency, agencyName }) => {
                                                                 : 'bg-gray-50'
                                                         }`}
                                                 >
-                                                    <p className="whitespace-pre-wrap break-words text-left">
-                                                        {message.text}
-                                                    </p>
+                                                    {message.isUser ? (
+                                                        <p className="whitespace-pre-wrap break-words text-left">
+                                                            {message.text}
+                                                        </p>
+                                                    ) : (
+                                                        <div className="prose prose-sm max-w-none text-left [&>*]:text-left [&_p]:text-left [&_ul]:text-left [&_ol]:text-left [&_li]:text-left [&_blockquote]:text-left">
+                                                            <ReactMarkdown
+                                                                className="[&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
+                                                                components={{
+                                                                    a: ({ node, ...props }) => (
+                                                                        <a
+                                                                            {...props}
+                                                                            className="text-orange-600 hover:underline"
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                        >
+                                                                            {props.children}
+                                                                        </a>
+                                                                    ),
+                                                                    code: ({ node, inline, className, children, ...props }) => (
+                                                                        <code
+                                                                            className={`${inline ? 'bg-gray-100 rounded px-1' : 'block bg-gray-100 p-2 rounded-lg'} text-left`}
+                                                                            {...props}
+                                                                        >
+                                                                            {children}
+                                                                        </code>
+                                                                    ),
+                                                                    ul: ({ node, ...props }) => (
+                                                                        <ul className="list-disc pl-4 mt-2 text-left" {...props} />
+                                                                    ),
+                                                                    ol: ({ node, ...props }) => (
+                                                                        <ol className="list-decimal pl-4 mt-2 text-left" {...props} />
+                                                                    ),
+                                                                    p: ({ node, ...props }) => (
+                                                                        <p className="text-left" {...props} />
+                                                                    ),
+                                                                    blockquote: ({ node, ...props }) => (
+                                                                        <blockquote className="border-l-4 border-gray-300 pl-4 text-left" {...props} />
+                                                                    ),
+                                                                }}
+                                                            >
+                                                                {message.text}
+                                                            </ReactMarkdown>
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 {/* Attachment container */}
@@ -236,7 +279,7 @@ const Chat = ({ agency, agencyName }) => {
                                             </div>
                                             {showDelayMessage && (
                                                 <p className="text-sm text-gray-500 ml-8">
-                                                    Generation times are slower due to long context.
+                                                    Generation times are slower due to long context, especially for the first message.
                                                 </p>
                                             )}
                                         </div>
