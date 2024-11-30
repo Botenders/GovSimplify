@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Eye, X } from "lucide-react";
+import { Eye, X, Download } from "lucide-react";
 
 const AttachmentPreview = ({ content }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -7,13 +7,18 @@ const AttachmentPreview = ({ content }) => {
     const title = content.title || "Attachment";
 
     const openModal = () => {
-        setIsModalOpen(true);
-        document.body.style.overflow = 'hidden';
+        if (content.type !== "pdf") {
+            setIsModalOpen(true);
+            document.body.style.overflow = "hidden";
+        } else {
+            // Direct download for PDFs
+            window.open(content.url, "_blank");
+        }
     };
 
     const closeModal = () => {
         setIsModalOpen(false);
-        document.body.style.overflow = 'unset';
+        document.body.style.overflow = "unset";
     };
 
     return (
@@ -23,11 +28,15 @@ const AttachmentPreview = ({ content }) => {
                 className="flex items-center gap-2 px-3 py-2 text-sm text-orange-700 
                     bg-orange-100 rounded-lg hover:bg-orange-200 transition-colors"
             >
-                <Eye className="w-4 h-4" />
+                {content.type === "pdf" ? (
+                    <Download className="w-4 h-4" />
+                ) : (
+                    <Eye className="w-4 h-4" />
+                )}
                 <span className="font-medium">{title}</span>
             </button>
 
-            {isModalOpen && (
+            {isModalOpen && content.type !== "pdf" && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center">
                     <div
                         className="absolute inset-0 bg-black/50 backdrop-blur-sm"

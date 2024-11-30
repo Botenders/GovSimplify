@@ -21,9 +21,9 @@ class Server:
         gov_api_key: str,
         genai_api_key: str,
         news_api_key: str,
-        redis_host: str="localhost",
-        redis_port: int=6379,
-        redis_db: int=0,
+        redis_host: str = "localhost",
+        redis_port: int = 6379,
+        redis_db: int = 0,
     ) -> None:
         self.redis_client = redis.StrictRedis(
             host=redis_host, port=redis_port, db=redis_db
@@ -42,7 +42,7 @@ class Server:
             return pickle.loads(serialized_history)  # Deserialize the history
         return []
 
-    def _save_history(self, session_id: str, history: list, ttl: int=600) -> None:
+    def _save_history(self, session_id: str, history: list, ttl: int = 600) -> None:
         """
         Save chat history to Redis with a TTL (time-to-live) that resets on each update.
 
@@ -63,8 +63,9 @@ class Server:
             display_name=cache_name,
             system_instruction=system_instruction,
             tools=[
-                FETCH_DOCUMENT_DETAILS,
                 # FETCH_LATEST_NEWS,
+                FETCH_DOCUMENT_DETAILS,
+                "google_search_retrieval",
             ],
             ttl=datetime.timedelta(minutes=30),
         )
@@ -75,7 +76,9 @@ class Server:
                 return True
         return False
 
-    def _get_model_cache(self, cache_name: str, reset_ttl: bool) -> caching.CachedContent:
+    def _get_model_cache(
+        self, cache_name: str, reset_ttl: bool
+    ) -> caching.CachedContent:
         for c in caching.CachedContent.list():
             if c.display_name == cache_name:
                 print(f"Found cache for {cache_name}")
@@ -136,7 +139,7 @@ class Server:
         # Load history from Redis
         cached_history = self._load_history(session_id)
         chat = model.start_chat(
-            history=cached_history, 
+            history=cached_history,
             enable_automatic_function_calling=True,
         )
 
@@ -153,11 +156,40 @@ class Server:
                     print(f"Executing {fn.name}")
                     args = parse_args_to_dict(fn.args)
                     fn_res = execute_function_call(fn.name, args, self._gov_api_key)
+                    result = fn_res.get("result")
 
-                    if fn_res.get("status") == "success":
-                        attachments.append(fn_res.get("result"))
+                    # Check if PDF URL exists
+                    if pdf_url := result.get("pdf_url"):
+                        print(f"Adding PDF attachment: {pdf_url}")
 
-                    # Add the function response to response parts
+                        # Append PDF attachment to attachments list
+                        attachments.append(
+                            {
+                                "type": "pdf",
+                                "file_uri": pdf_url,
+                            }
+                        )
+
+                        # Add PDF as a part of the response for the model
+                        new_response_parts.append(
+                            genai.protos.Part(
+                                file_data=genai.protos.FileData(
+                                    file_name=pdf_url.split("/")[-1],
+                                    file_uri=pdf_url,
+                                    mime_type="application/pdf",
+                                    display_name=pdf_url.split("/")[-1],
+                                )
+                            )
+                        )
+                        continue
+
+                    # Handle other successful content
+                    if fn_res.get("status") == "success" and result.get("content"):
+                        resp = fn_res.get("result")
+                        resp['type'] = 'htm'
+                        attachments.append(resp)
+
+                    # Append function response for other outputs
                     new_response_parts.append(
                         genai.protos.Part(
                             function_response=genai.protos.FunctionResponse(

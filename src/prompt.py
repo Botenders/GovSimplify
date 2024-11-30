@@ -49,7 +49,7 @@ Documents for Analysis:
 {% if doc.summary %}
 **Content Summary**: {{ doc.summary }}
 {% else %}
-**Action Required**: Full content is missing. Fetch only if the document is highly relevant to the analysis based on its type, recency, or criticality.
+**Action Required**: Full content is missing. Fetch only if the document is highly relevant to the user query based on its type, recency, or criticality.
 {% endif %}
 ---
 {% endfor %}

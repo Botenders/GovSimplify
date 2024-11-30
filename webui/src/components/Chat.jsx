@@ -277,7 +277,7 @@ const Chat = ({ agency, agencyName }) => {
                                         <div className="flex flex-col items-start gap-2 p-4">
                                             <div className="flex items-center gap-2">
                                                 <Loader2 className="animate-spin text-orange-500" size={24} />
-                                                <span className="text-gray-600">Generating response...</span>
+                                                <span className="text-gray-600">Referencing {agency} data...</span>
                                             </div>
                                             {showDelayMessage && (
                                                 <p className="text-sm text-gray-500 ml-8">
