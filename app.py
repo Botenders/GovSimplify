@@ -17,7 +17,7 @@ server = Server(
 
 requests_cache.install_cache(
     cache_name="botenders_gov_simplify_cache",
-    expire_after=3600,
+    expire_after=3600 * 24, # Policies rarely change on a daily basis, so cache for 24 hours
     allowable_methods=["GET"],
 )
 
