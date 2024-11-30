@@ -262,7 +262,7 @@ const Chat = ({ agency, agencyName }) => {
                                                 {/* Attachment container */}
                                                 <div className="mt-2 max-w-[80%] overflow-hidden flex flex-col gap-y-2">
                                                     {message.attachments?.map((attachment, attachmentIndex) => (
-                                                        attachment.content && (
+                                                        (attachment.content || attachment.file_uri) && (
                                                             <AttachmentPreview
                                                                 key={attachmentIndex}
                                                                 content={attachment}

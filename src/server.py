@@ -1,9 +1,11 @@
+from io import BytesIO
 import time
 import redis
 import pickle
 import datetime
 import google.generativeai as genai
 from google.generativeai import caching
+import requests
 
 from src.prompt import generate_prompt
 from src.news import fetch_news_with_query
@@ -166,28 +168,42 @@ class Server:
                         attachments.append(
                             {
                                 "type": "pdf",
+                                "title": pdf_url,
                                 "file_uri": pdf_url,
                             }
                         )
 
-                        # Add PDF as a part of the response for the model
-                        new_response_parts.append(
-                            genai.protos.Part(
-                                file_data=genai.protos.FileData(
-                                    file_name=pdf_url.split("/")[-1],
-                                    file_uri=pdf_url,
-                                    mime_type="application/pdf",
-                                    display_name=pdf_url.split("/")[-1],
-                                )
+                        response = requests.get(pdf_url)
+                        if response.status_code == 200:
+                            data = BytesIO(response.content)
+                            pdf_file = genai.upload_file(
+                                path=data,
+                                mime_type="application/pdf",
+                                display_name=pdf_url,
                             )
-                        )
-                        continue
+                            print(f"File uploaded successfully: {pdf_file}")
+
+                        # Add PDF as a part of the response for the model
+                        new_response_parts.append(pdf_file)
 
                     # Handle other successful content
                     if fn_res.get("status") == "success" and result.get("content"):
                         resp = fn_res.get("result")
-                        resp['type'] = 'htm'
+                        resp["type"] = "htm"
                         attachments.append(resp)
+                        new_response_parts.append(
+                            genai.protos.Part(
+                                function_response=genai.protos.FunctionResponse(
+                                    name=fn.name,
+                                    response={
+                                        "status": "success",
+                                        "result": "pdf file attached",
+                                        "error": None,
+                                    },
+                                )
+                            )
+                        )
+                        continue
 
                     # Append function response for other outputs
                     new_response_parts.append(

@@ -12,7 +12,7 @@ const AttachmentPreview = ({ content }) => {
             document.body.style.overflow = "hidden";
         } else {
             // Direct download for PDFs
-            window.open(content.url, "_blank");
+            window.open(content.file_uri, "_blank");
         }
     };
 
