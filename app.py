@@ -1,14 +1,18 @@
+import os
+import dotenv
 import requests_cache
 from datetime import datetime
 from fastapi import FastAPI, Request
 
 from src.server import Server
 
+dotenv.load_dotenv()
+
 app = FastAPI()
 server = Server(
-    gov_api_key = "",
-    genai_api_key = "",
-    news_api_key = "pub_60731411687c0414b085c0e6df47b94f07cfc",
+    gov_api_key=os.getenv("GOV_API_KEY"),
+    genai_api_key=os.getenv("GENAI_API_KEY"),
+    news_api_key=os.getenv("NEWS_API_KEY"),
 )
 
 requests_cache.install_cache(
@@ -24,10 +28,9 @@ async def fetch_news(query: str):
 @app.post("/message/{agency}")
 async def handle_message(request: Request, agency: str):
     payload = await request.json()
-    return {
-        "text": payload['message'],  # The response message
-        "timestamp": datetime.now().isoformat()  # Current timestamp in ISO format
-    }
+    response = server.handle_message(agency, payload['message'])
+    response['timestamp'] = datetime.now().isoformat()
+    return response
 
 
 if __name__ == "__main__":

@@ -47,66 +47,29 @@ def fetch_agency(api_key, agency, filters="Notice,Rule,Proposed Rule"):
     return results
 
 
-def fetch_doc_summaries(api_key, docs, doc_type="Rule"):
+def download_and_parse_htm(file_url, return_summary_only=False, return_raw_htm=False):
     """
-    Processes documents from a list sequentially, fetching and parsing HTML content where applicable.
-    Args:
-        api_key (str): API key for Regulations.gov API.
-        docs (list): List of documents returned by fetch_agency.
-        doc_type (str or iterable): Document type(s) to filter (e.g., "Rule", "Notice", or "All").
-    Returns:
-        list: Processed documents with parsed content.
-    """
-    def process_doc(doc):
-        attr = doc.get("attributes")
-        link = doc.get("links", {}).get("self")
-        if attr and link:
-            # Handle single string or multiple document types
-            document_type = attr.get("documentType")
-            if doc_type == "All" or document_type in doc_type:
-                try:
-                    # Fetch the document URL
-                    url = fetch_document(api_key, link)
-                    # Parse the HTML content
-                    summary = download_and_parse_htm(url, return_summary_only=True)
-                    doc["summary"] = summary
-                except Exception as e:
-                    doc["error"] = str(e)  # Log the error in the document
-        return doc
-
-    # Ensure doc_type is an iterable (except for "All")
-    if doc_type != "All" and not isinstance(doc_type, Iterable):
-        doc_type = [doc_type]  # Convert single string to a list
-    
-    # Sequentially process each document
-    processed_docs = []
-    n = len(docs)
-    for i, doc in enumerate(docs):
-        print(f"Processing {i+1}/{n} documents", end="\r", flush=True)
-        try:
-            processed_docs.append(process_doc(doc))
-        except Exception as e:
-            print(f"Error processing document: {e}")
-    
-    return processed_docs
-
-
-def download_and_parse_htm(file_url):
-    """
-    Downloads an .htm file, extracts meaningful content, and cleans it to minimize token count
-    while preserving important information.
+    Downloads an .htm file, extracts meaningful content, and optionally returns the raw HTML or the summary section.
 
     Args:
         file_url (str): URL of the .htm file to download.
+        return_summary_only (bool): If True, return only the summary section. Otherwise, return the full cleaned content.
+        return_raw_htm (bool): If True, return the raw HTML content without any processing.
 
     Returns:
-        str: Cleaned and formatted text content from the HTML document.
+        str: Raw HTML, cleaned and formatted text content, or the summary section from the HTML document.
     """
     try:
         # Step 1: Download the HTML content
         response = requests.get(file_url)
         response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
+        raw_html = response.text  # Raw HTML content
+
+        # Return raw HTML immediately if requested
+        if return_raw_htm:
+            return raw_html
+
+        soup = BeautifulSoup(raw_html, "html.parser")
 
         # Step 2: Extract the main <PRE> tag content
         pre_tag = soup.find("pre")
@@ -139,13 +102,30 @@ def download_and_parse_htm(file_url):
             if line:  # Only keep non-empty lines
                 cleaned_lines.append(line)
 
-        # Step 5: Join lines and normalize spacing
+        # Step 5: Extract the summary if requested
+        if return_summary_only:
+            summary_lines = []
+            in_summary = False
+            for line in cleaned_lines:
+                if line.startswith("SUMMARY:"):
+                    in_summary = True
+                    summary_lines.append(line.replace("SUMMARY:", "").strip())
+                elif in_summary:
+                    if not line or line.endswith(":"):  # Stop at a new section
+                        break
+                    summary_lines.append(line)
+
+            return (
+                " ".join(summary_lines).strip()
+                if summary_lines
+                else "Summary not found."
+            )
+
+        # Step 6: Join lines and normalize spacing for full content
         cleaned_text = "\n".join(cleaned_lines)
         cleaned_text = re.sub(
             r"\n{3,}", "\n\n", cleaned_text
         )  # Limit consecutive newlines
-
-        # Step 6: Preserve important sections while removing redundant formatting
         cleaned_text = re.sub(
             r"(\w+:)\s+", r"\1 ", cleaned_text
         )  # Normalize label formatting
@@ -283,7 +263,7 @@ def fetch_document_details(api_key, link):
         html_file_url = get_html_file_url(metadata)
 
         # Step 3: Download and parse the HTML content
-        content = download_and_parse_htm(html_file_url)
+        content = download_and_parse_htm(html_file_url, return_raw_htm=True)
 
         # Step 4: Return structured data
         return {
@@ -300,3 +280,48 @@ def fetch_document_details(api_key, link):
         raise RuntimeError(f"Data error: {e}")
     except Exception as e:
         raise RuntimeError(f"An unexpected error occurred: {e}")
+
+
+def fetch_doc_summaries(api_key, docs, doc_type="Rule"):
+    """
+    Processes documents from a list sequentially, fetching and parsing HTML content where applicable.
+    Args:
+        api_key (str): API key for Regulations.gov API.
+        docs (list): List of documents returned by fetch_agency.
+        doc_type (str or iterable): Document type(s) to filter (e.g., "Rule", "Notice", or "All").
+    Returns:
+        list: Processed documents with parsed content.
+    """
+
+    def process_doc(doc):
+        attr = doc.get("attributes")
+        link = doc.get("links", {}).get("self")
+        if attr and link:
+            # Handle single string or multiple document types
+            document_type = attr.get("documentType")
+            if doc_type == "All" or document_type in doc_type:
+                try:
+                    # Fetch the document URL
+                    url = fetch_document(api_key, link)
+                    # Parse the HTML content
+                    summary = download_and_parse_htm(url, return_summary_only=True)
+                    doc["summary"] = summary
+                except Exception as e:
+                    doc["error"] = str(e)  # Log the error in the document
+        return doc
+
+    # Ensure doc_type is an iterable (except for "All")
+    if doc_type != "All" and not isinstance(doc_type, Iterable):
+        doc_type = [doc_type]  # Convert single string to a list
+
+    # Sequentially process each document
+    processed_docs = []
+    n = len(docs)
+    for i, doc in enumerate(docs):
+        print(f"Processing {i+1}/{n} documents", end="\r", flush=True)
+        try:
+            processed_docs.append(process_doc(doc))
+        except Exception as e:
+            print(f"Error processing document: {e}")
+
+    return processed_docs
