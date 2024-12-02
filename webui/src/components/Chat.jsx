@@ -39,7 +39,7 @@ const Chat = ({ agency, agencyName }) => {
     const [news, setNews] = useState([]);
     const [showDelayMessage, setShowDelayMessage] = useState(false);
     const [isLoadingNews, setIsLoadingNews] = useState(true);
-    const [sessionId, setSessionId] = useState(uuid4());
+    const [sessionId,] = useState(uuid4());
     const messagesEndRef = useRef(null);
     const loadingTimerRef = useRef(null);
 
